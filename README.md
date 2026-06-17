@@ -1,40 +1,76 @@
-# 🚀 Telegram MTProxy Server with Docker
+# 🚀 Telegram MTProxy with Docker
 
-Deploy a Telegram MTProxy server on Ubuntu using Docker in a few minutes.
+A simple, reliable guide to deploying your own **Telegram MTProxy** server on Ubuntu using Docker.
 
-## Features
+This guide is designed for beginners and includes installation, configuration, troubleshooting, and maintenance.
 
-- ✅ Docker-based deployment
-- ✅ Runs on port 443 (recommended)
-- ✅ Supports Telegram promotion tags
-- ✅ Automatic restart on reboot
-- ✅ Compatible with Ubuntu 22.04+ and 24.04+
-- ✅ Simple management commands
+> **Note:** MTProxy is intended to help Telegram clients connect to Telegram's network. Make sure you comply with your local laws and your hosting provider's terms of service.
 
 ---
 
-# 1. Requirements
+# 📋 Requirements
 
-- Ubuntu VPS (22.04 or newer)
-- Docker installed (or install using the steps below)
-- Public IPv4 address
-- TCP port **443** open in your cloud firewall and local firewall
+Before you begin, make sure you have:
+
+- Ubuntu 22.04 or newer
+- A VPS or dedicated server with a public IPv4 address
+- Root or `sudo` access
+- Docker installed (instructions below)
+- TCP port **443** allowed in both your VPS firewall and local firewall
 
 ---
 
-# 2. Install Docker
+# 🐳 Step 1: Install Docker
+
+Update your system:
 
 ```bash
 sudo apt update
+sudo apt upgrade -y
+```
+
+Install Docker:
+
+```bash
 sudo apt install -y docker.io
+```
+
+Enable Docker at boot:
+
+```bash
 sudo systemctl enable docker
 sudo systemctl start docker
+```
+
+Verify installation:
+
+```bash
 docker --version
 ```
 
 ---
 
-# 3. Open Firewall
+# 🔑 Step 2: Generate a Secret
+
+Generate a secure 32-character hexadecimal secret:
+
+```bash
+openssl rand -hex 16
+```
+
+Example:
+
+```
+37298839850805c2d744d24df6bc7dde
+```
+
+Save this value—you will use it when starting the proxy.
+
+---
+
+# 🔥 Step 3: Open Port 443
+
+If you use UFW:
 
 ```bash
 sudo ufw allow 443/tcp
@@ -42,31 +78,48 @@ sudo ufw reload
 sudo ufw status
 ```
 
+If your VPS provider has a cloud firewall (Azure, AWS, Google Cloud, etc.), make sure it also allows inbound TCP traffic on port **443**.
+
 ---
 
-# 4. Stop Any Service Using Port 443
+# 🚫 Step 4: Make Sure Port 443 Is Free
 
-Check:
+Check whether another service is already using port 443:
 
 ```bash
 sudo ss -ltnp | grep :443
 ```
 
-If Nginx is using port 443:
+If Nginx or Apache is listening on port 443, stop it first:
 
 ```bash
 sudo systemctl stop nginx
 sudo systemctl disable nginx
 ```
 
+or
+
+```bash
+sudo systemctl stop apache2
+sudo systemctl disable apache2
+```
+
 ---
 
-# 5. Run MTProxy
+# 🚀 Step 5: Start MTProxy
 
-Replace:
+Basic deployment:
 
-- `YOUR_SECRET` with your 32-character hexadecimal secret.
-- `YOUR_PROMOTION_TAG` with your Telegram promotion tag (optional).
+```bash
+sudo docker run -d \
+  --name mtproxy \
+  --restart unless-stopped \
+  -p 443:443 \
+  -e SECRET=YOUR_SECRET \
+  telegrammessenger/proxy:latest
+```
+
+If you have a Telegram promotion tag, include it:
 
 ```bash
 sudo docker run -d \
@@ -78,15 +131,19 @@ sudo docker run -d \
   telegrammessenger/proxy:latest
 ```
 
+> `TAG` is optional. Only use it if you have obtained a valid promotion tag.
+
 ---
 
-# 6. Verify Container
+# ✅ Step 6: Verify the Container
+
+List running containers:
 
 ```bash
 sudo docker ps
 ```
 
-Expected output should show:
+You should see something similar to:
 
 ```
 0.0.0.0:443->443/tcp
@@ -94,29 +151,29 @@ Expected output should show:
 
 ---
 
-# 7. Check Logs
+# 📄 Step 7: Check Logs
+
+View recent logs:
 
 ```bash
 sudo docker logs --tail 50 mtproxy
 ```
 
-You should see output similar to:
+Follow logs in real time:
 
-```
-Tag: YOUR_PROMOTION_TAG
-External IP: YOUR_SERVER_IP
-Starting proxy...
+```bash
+sudo docker logs -f mtproxy
 ```
 
 ---
 
-# 8. Verify Port 443
+# 🔌 Step 8: Confirm Port 443 Is Listening
 
 ```bash
 sudo ss -ltnp | grep :443
 ```
 
-Expected:
+Expected output:
 
 ```
 LISTEN 0 4096 0.0.0.0:443
@@ -124,41 +181,41 @@ LISTEN 0 4096 0.0.0.0:443
 
 ---
 
-# 9. Test Locally
+# 🧪 Step 9: Test Connectivity
+
+Local test:
 
 ```bash
 nc -vz 127.0.0.1 443
 ```
 
-Expected:
-
-```
-Connection succeeded
-```
-
----
-
-# 10. Test from the Internet
+Remote test:
 
 ```bash
 nc -vz YOUR_SERVER_IP 443
 ```
 
-Expected:
-
-```
-Connection succeeded
-```
+Both should report a successful connection.
 
 ---
 
-# 11. Create Telegram Proxy Link
+# 📱 Step 10: Connect Telegram
+
+Replace the placeholders below:
+
+```
+Server: YOUR_SERVER_IP
+Port: 443
+Secret: YOUR_SECRET
+```
+
+You can also create links in this format:
 
 ```
 https://t.me/proxy?server=YOUR_SERVER_IP&port=443&secret=YOUR_SECRET
 ```
 
-Direct link:
+or
 
 ```
 tg://proxy?server=YOUR_SERVER_IP&port=443&secret=YOUR_SECRET
@@ -166,36 +223,36 @@ tg://proxy?server=YOUR_SERVER_IP&port=443&secret=YOUR_SECRET
 
 ---
 
-# 12. Optional: Use a Domain Name
+# 🌐 Optional: Use a Domain Name
 
-Create an **A** record:
+Create an **A** record pointing to your server:
 
 | Type | Name | Value |
 |------|------|-------|
 | A | proxy | YOUR_SERVER_IP |
 
-If using Cloudflare:
+Example:
 
-- Proxy Status: **DNS only**
-- Do **not** enable the orange-cloud reverse proxy.
+```
+proxy.example.com → 203.0.113.10
+```
 
-Verify:
+If you use Cloudflare:
+
+- ✅ Set the record to **DNS only**
+- ❌ Do **not** enable the reverse proxy (orange cloud)
+
+Verify DNS:
 
 ```bash
 dig +short proxy.example.com
 ```
 
-Expected:
-
-```
-YOUR_SERVER_IP
-```
-
 ---
 
-# 13. Docker Management
+# 🛠 Docker Management
 
-## View running container
+## Show running containers
 
 ```bash
 sudo docker ps
@@ -233,95 +290,91 @@ sudo docker rm -f mtproxy
 
 ---
 
-# 14. Update to Latest Image
+# 🔄 Update MTProxy
+
+Pull the latest image:
 
 ```bash
 sudo docker pull telegrammessenger/proxy:latest
+```
 
+Recreate the container using your existing configuration.
+
+---
+
+# 🩺 Troubleshooting
+
+## Telegram shows "Unavailable"
+
+- Ensure the container is running:
+  ```bash
+  sudo docker ps
+  ```
+- Confirm port 443 is open:
+  ```bash
+  sudo ss -ltnp | grep :443
+  ```
+- Verify UFW allows TCP 443:
+  ```bash
+  sudo ufw status
+  ```
+- Check your cloud firewall rules.
+- Confirm your DNS record points to the correct public IP.
+- If using Cloudflare, ensure the record is **DNS only**.
+- Double-check that the secret in the Telegram client matches the server configuration exactly.
+
+## Browser cannot open the server
+
+MTProxy is **not a website**. Browsing to `https://YOUR_SERVER_IP` or `https://your-domain` may time out or show certificate-related errors because MTProxy does not serve normal HTTPS pages.
+
+---
+
+# 🔒 Security Tips
+
+- Generate a strong random secret.
+- Keep Ubuntu updated:
+  ```bash
+  sudo apt update && sudo apt upgrade
+  ```
+- Enable automatic container restarts.
+- Use SSH keys instead of passwords where possible.
+- Review Docker logs periodically.
+
+---
+
+# 📚 Useful Commands
+
+```bash
+# Running containers
+sudo docker ps
+
+# Follow logs
+sudo docker logs -f mtproxy
+
+# Restart
+sudo docker restart mtproxy
+
+# Stop
+sudo docker stop mtproxy
+
+# Remove
 sudo docker rm -f mtproxy
 
-sudo docker run -d \
-  --name mtproxy \
-  --restart unless-stopped \
-  -p 443:443 \
-  -e SECRET=YOUR_SECRET \
-  -e TAG=YOUR_PROMOTION_TAG \
-  telegrammessenger/proxy:latest
-```
+# Check listening ports
+sudo ss -ltnp
 
----
-
-# 15. Common Checks
-
-## Is Docker running?
-
-```bash
-sudo docker ps
-```
-
-## Is port 443 listening?
-
-```bash
-sudo ss -ltnp | grep :443
-```
-
-## Is UFW allowing 443?
-
-```bash
+# Firewall status
 sudo ufw status
-```
 
-## Does DNS resolve?
+# DNS lookup
+dig +short your-domain.example
 
-```bash
-dig +short proxy.example.com
-```
-
-## Is the port reachable?
-
-```bash
-nc -vz proxy.example.com 443
+# Test connectivity
+nc -vz YOUR_SERVER_IP 443
 ```
 
 ---
 
-# 16. Troubleshooting
+# 📄 License
 
-### Telegram says "Unavailable"
-
-- Ensure MTProxy is running.
-- Confirm port 443 is open in both UFW and your cloud provider's firewall.
-- Verify the DNS A record points to the correct public IP.
-- If using Cloudflare, set the DNS record to **DNS only**.
-- Double-check that the secret in the Telegram link exactly matches the server configuration.
-
-### Promotion tag not working
-
-- Start the container with the correct `TAG` value.
-- Check the logs:
-
-```bash
-sudo docker logs mtproxy
-```
-
-You should see:
-
-```
-Tag: YOUR_PROMOTION_TAG
-```
-
----
-
-# 17. Security Tips
-
-- Use a strong, random 32-character hexadecimal secret.
-- Keep your operating system updated.
-- Restrict SSH access and use key-based authentication.
-- Monitor Docker logs for unusual activity.
-- Regularly back up your deployment configuration.
-
----
-
-# License
-
-This project is provided under the MIT License.
+This guide is provided under the MIT License. You are free to use, modify, and share it with appropriate attribution.
